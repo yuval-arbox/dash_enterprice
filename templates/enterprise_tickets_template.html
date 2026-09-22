@@ -253,6 +253,7 @@
   .src-badge.ECS { background: #26406e; color: #8fc2f0; }
   .src-badge.RD { background: #2a2050; color: #b0a0f0; }
   .src-badge.PM { background: #202f50; color: #a0c0f0; }
+  .src-badge.DB { background: #2f2418; color: #d8b06a; }
 
   .badge {
     display: inline-block;
@@ -311,8 +312,9 @@
 <div class="subtitle">
   טיקטים מהבורד
   <a href="https://arbox.atlassian.net/jira/software/projects/ECS/boards" target="_blank" rel="noopener">Enterprise Customers - Sivan (ECS)</a>
-  + טיקטי פיתוח/מוצר מקושרים מ-<a href="https://arbox.atlassian.net/jira/software/projects/RD/boards" target="_blank" rel="noopener">RD</a>
-  ומ-<a href="https://arbox.atlassian.net/jira/software/projects/PM/boards" target="_blank" rel="noopener">PM</a>
+  + טיקטים מקושרים מ-<a href="https://arbox.atlassian.net/jira/software/projects/RD/boards" target="_blank" rel="noopener">RD</a>,
+  <a href="https://arbox.atlassian.net/jira/software/projects/PM/boards" target="_blank" rel="noopener">PM</a>
+  ומ-<a href="https://arbox.atlassian.net/jira/software/projects/DB/boards" target="_blank" rel="noopener">DB</a>
   · מתעדכן אוטומטית מ-Jira · עדכון אחרון: __UPDATED_AT__
 </div>
 
@@ -340,7 +342,7 @@
       <th data-key="key">מפתח <span class="arrow">▾</span></th>
       <th data-key="summary">כותרת <span class="arrow">▾</span></th>
       <th data-key="business" class="col-business">עסק <span class="arrow">▾</span></th>
-      <th data-key="source">אנטרפרייז / פיתוח / מוצר <span class="arrow">▾</span></th>
+      <th data-key="source">אנטרפרייז / פיתוח / מוצר / תפעול <span class="arrow">▾</span></th>
       <th data-key="status">סטטוס <span class="arrow">▾</span></th>
       <th data-key="issuetype">סוג <span class="arrow">▾</span></th>
       <th data-key="priority">עדיפות <span class="arrow">▾</span></th>
@@ -363,7 +365,7 @@
 <script>
 const DATA = __DATA_JSON__;
 
-const SOURCE_LABEL = { ECS: 'אנטרפרייז', RD: 'פיתוח', PM: 'מוצר' };
+const SOURCE_LABEL = { ECS: 'אנטרפרייז', RD: 'פיתוח', PM: 'מוצר', DB: 'תפעול' };
 const BUSINESSES = DATA.businesses.filter(b => b.norm !== '__none__');
 
 let state = { search: '', status: '', biz: '', bucket: '', showAll: false, sortKey: 'updated', sortDir: -1 };
@@ -381,21 +383,35 @@ function bizScopedTickets() {
 }
 
 // Cross-project progress bucket: a ticket's own Jira status conventions
-// differ too much between the Enterprise, RD and Product boards to trust
-// generic to-do/in-progress/done categories, so the three buckets shown
-// here are defined explicitly instead:
+// differ too much between the Enterprise, RD, Product and Ops (DB) boards
+// to trust generic to-do/in-progress/done categories, so the three
+// buckets shown here are defined explicitly instead:
 //  - done: only an RD (dev) ticket whose own status is literally "Done" -
-//    that's the one signal that something was actually shipped.
+//    that's the one signal that something was actually shipped - or a DB
+//    ticket per the explicit map below.
 //  - inProgress: an Enterprise ticket not sitting in Backlog and not
 //    already Done (an Enterprise "Done" isn't a build - it falls through
 //    to backlog instead, since only RD's Done counts as shipped), or any
-//    Product ticket not sitting in Backlog.
+//    Product ticket not sitting in Backlog, or a DB ticket per the map.
 //  - backlog: everything else (by elimination).
+//
+// DB (Ops board) statuses don't follow any consistent to-do/in-progress/
+// done convention at all, so they're mapped explicitly by name instead of
+// by a rule; a DB status not listed here falls through to backlog.
+const DB_STATUS_BUCKET = {
+  'to do': 'todo',
+  'pending': 'inprogress',
+  'data request- support': 'todo',
+  'data request - support': 'todo',
+  'done': 'done',
+};
+
 function ticketBucket(t) {
   const status = (t.status || '').trim().toLowerCase();
-  if (t.source === 'RD' && status === 'done') return 'done';
-  if (t.source === 'ECS' && status !== 'backlog' && status !== 'done') return 'inprogress';
-  if (t.source === 'PM' && status !== 'backlog') return 'inprogress';
+  if (t.source === 'DB') return DB_STATUS_BUCKET[status] || 'todo';
+  if (t.source === 'RD') return status === 'done' ? 'done' : 'todo';
+  if (t.source === 'ECS') return (status !== 'backlog' && status !== 'done') ? 'inprogress' : 'todo';
+  if (t.source === 'PM') return status !== 'backlog' ? 'inprogress' : 'todo';
   return 'todo';
 }
 

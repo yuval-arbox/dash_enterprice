@@ -35,12 +35,12 @@ PROJECT_KEY = "ECS"
 BUSINESS_FIELD = "customfield_10301"
 FIELDS = ["summary", "status", "issuetype", BUSINESS_FIELD, "priority", "created", "updated", "issuelinks"]
 
-# Engineering/product work for a customer request lives in these two other
+# Engineering/product/ops work for a customer request lives in these other
 # projects, and gets connected to the customer's ECS Epic via a Jira
 # "Polaris datapoint work item link" (the epic acts as the "idea", the
-# RD/PM ticket is the delivery work "added to" it).
+# linked ticket is the delivery work "added to" it).
 DEV_LINK_TYPE = "Polaris datapoint work item link"
-DEV_PROJECT_KEYS = {"RD", "PM"}
+DEV_PROJECT_KEYS = {"RD", "PM", "DB"}
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE_PATH = os.path.join(REPO_ROOT, "templates", "enterprise_tickets_template.html")
