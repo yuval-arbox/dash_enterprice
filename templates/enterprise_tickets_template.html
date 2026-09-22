@@ -125,13 +125,10 @@
 
   .cubes {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 14px;
     max-width: 1200px;
     margin: 0 auto 26px;
-  }
-  @media (max-width: 640px) {
-    .cubes { grid-template-columns: repeat(2, 1fr); }
   }
   .cube {
     background: linear-gradient(135deg, #16233d 0%, #1b2c4d 100%);
@@ -161,6 +158,9 @@
   .cube.progress .num { color: #c8b08a; }
   .cube.done .num { color: #6ad89a; }
   .cube.biz .num { color: #b08ad8; }
+  .cube.rdactive .num { color: #b0a0f0; }
+  .cube.dbactive .num { color: #d8b06a; }
+  .cube.pmactive .num { color: #a0c0f0; }
 
   .controls {
     max-width: 1200px;
@@ -196,11 +196,12 @@
   }
   table {
     width: 100%;
-    min-width: 760px;
     border-collapse: collapse;
     font-size: 13px;
     background: #131f38;
   }
+  #tableWrap table { min-width: 1400px; }
+  #bizListWrap table { min-width: 620px; }
   thead th {
     background: linear-gradient(90deg, #c8b08a 0%, #7a9ed8 100%);
     color: #1a1a1a;
@@ -280,6 +281,10 @@
     padding: 30px;
   }
 
+  .biz-row-link { cursor: pointer; color: #8fc2f0; font-weight: 700; }
+  .biz-row-link:hover { text-decoration: underline; }
+  .biz-num { font-variant-numeric: tabular-nums; }
+
   .empty-state {
     max-width: 1200px;
     margin: 0 auto;
@@ -342,14 +347,34 @@
       <th data-key="key">מפתח <span class="arrow">▾</span></th>
       <th data-key="summary">כותרת <span class="arrow">▾</span></th>
       <th data-key="business" class="col-business">עסק <span class="arrow">▾</span></th>
-      <th data-key="source">אנטרפרייז / פיתוח / מוצר / תפעול <span class="arrow">▾</span></th>
+      <th data-key="source">בורד <span class="arrow">▾</span></th>
+      <th data-key="assignee">מבצע <span class="arrow">▾</span></th>
       <th data-key="status">סטטוס <span class="arrow">▾</span></th>
-      <th data-key="issuetype">סוג <span class="arrow">▾</span></th>
-      <th data-key="priority">עדיפות <span class="arrow">▾</span></th>
+      <th data-key="priority">תעדוף <span class="arrow">▾</span></th>
+      <th data-key="releaseTrigger">Release Trigger <span class="arrow">▾</span></th>
+      <th data-key="fixVersion">Fix Version <span class="arrow">▾</span></th>
+      <th data-key="duedate">Due Date <span class="arrow">▾</span></th>
+      <th data-key="created">תאריך יצירה <span class="arrow">▾</span></th>
       <th data-key="updated">עודכן <span class="arrow">▾</span></th>
     </tr>
   </thead>
   <tbody id="rows"></tbody>
+</table>
+</div>
+
+<div class="table-wrap" id="bizListWrap" hidden>
+<table>
+  <thead>
+    <tr>
+      <th>עסק</th>
+      <th>אפיק</th>
+      <th>סה"כ</th>
+      <th>לטיפול</th>
+      <th>בתהליך</th>
+      <th>בוצע</th>
+    </tr>
+  </thead>
+  <tbody id="bizListRows"></tbody>
 </table>
 </div>
 
@@ -415,6 +440,14 @@ function ticketBucket(t) {
   return 'todo';
 }
 
+// "Active" (not-yet-started) tickets per board, for the three per-board
+// cubes below - each board's own "not started" status, by name:
+function isActiveOnBoard(t, source, notStartedStatus) {
+  if (t.source !== source) return false;
+  const status = (t.status || '').trim().toLowerCase();
+  return status !== notStartedStatus;
+}
+
 function renderCubes() {
   const scoped = bizScopedTickets();
   const byBucket = { todo: 0, inprogress: 0, done: 0 };
@@ -425,12 +458,14 @@ function renderCubes() {
     { cls: 'progress', bucket: 'inprogress', num: byBucket.inprogress, lbl: 'בתהליך' },
     { cls: 'done', bucket: 'done', num: byBucket.done, lbl: 'בוצע' },
   ];
-  if (state.biz) {
-    const devCount = scoped.filter(t => t.source && t.source !== 'ECS').length;
-    cubes.push({ cls: 'biz', bucket: 'devproduct', num: devCount, lbl: 'טיקטי פיתוח/מוצר' });
-  } else {
-    cubes.push({ cls: 'biz', bucket: '', num: BUSINESSES.length, lbl: 'עסקים' });
+  if (!state.biz) {
+    cubes.push({ cls: 'biz', bucket: 'bizlist', num: BUSINESSES.length, lbl: 'עסקים' });
   }
+  cubes.push(
+    { cls: 'rdactive', bucket: 'rdActive', num: scoped.filter(t => isActiveOnBoard(t, 'RD', 'to do')).length, lbl: 'בפיתוח' },
+    { cls: 'dbactive', bucket: 'dbActive', num: scoped.filter(t => isActiveOnBoard(t, 'DB', 'to do')).length, lbl: 'דאטה' },
+    { cls: 'pmactive', bucket: 'pmActive', num: scoped.filter(t => isActiveOnBoard(t, 'PM', 'backlog')).length, lbl: 'מוצר' },
+  );
   document.getElementById('cubes').innerHTML = cubes.map(c =>
     `<div class="cube ${c.cls} clickable${(c.bucket && state.bucket === c.bucket) ? ' active' : ''}" data-bucket="${c.bucket}"><div class="num">${c.num}</div><div class="lbl">${c.lbl}</div></div>`
   ).join('');
@@ -452,7 +487,7 @@ function renderControls() {
 
   document.getElementById('search').oninput = (e) => { state.search = e.target.value.trim().toLowerCase(); renderAll(); };
 
-  document.querySelectorAll('thead th').forEach(th => {
+  document.querySelectorAll('#tableWrap thead th').forEach(th => {
     th.tabIndex = 0;
     const activate = () => {
       const k = th.dataset.key;
@@ -464,6 +499,28 @@ function renderControls() {
   });
 
   setupBizSearch();
+}
+
+function selectBusiness(b) {
+  state.biz = b.norm;
+  state.bucket = '';
+  const input = document.getElementById('bizSearch');
+  input.value = b.label;
+  document.getElementById('bizSuggest').hidden = true;
+  renderActivePill();
+  document.getElementById('bizClear').hidden = false;
+  renderAll();
+}
+
+function clearBusiness() {
+  state.biz = '';
+  state.bucket = '';
+  state.showAll = false;
+  document.getElementById('bizSearch').value = '';
+  document.getElementById('bizClear').hidden = true;
+  renderActivePill();
+  document.getElementById('bizSuggest').hidden = true;
+  renderAll();
 }
 
 function setupBizSearch() {
@@ -489,27 +546,6 @@ function setupBizSearch() {
     suggestBox.innerHTML = '';
     currentSuggestions = [];
     suggestIndex = -1;
-  }
-
-  function selectBusiness(b) {
-    state.biz = b.norm;
-    state.bucket = '';
-    input.value = b.label;
-    hideSuggestions();
-    renderActivePill();
-    clearBtn.hidden = false;
-    renderAll();
-  }
-
-  function clearBusiness() {
-    state.biz = '';
-    state.bucket = '';
-    state.showAll = false;
-    input.value = '';
-    clearBtn.hidden = true;
-    renderActivePill();
-    hideSuggestions();
-    renderAll();
   }
 
   function highlight(i) {
@@ -570,8 +606,10 @@ function renderActivePill() {
 }
 
 function matchesBucket(t) {
-  if (!state.bucket) return true;
-  if (state.bucket === 'devproduct') return !!(t.source && t.source !== 'ECS');
+  if (!state.bucket || state.bucket === 'bizlist') return true;
+  if (state.bucket === 'rdActive') return isActiveOnBoard(t, 'RD', 'to do');
+  if (state.bucket === 'dbActive') return isActiveOnBoard(t, 'DB', 'to do');
+  if (state.bucket === 'pmActive') return isActiveOnBoard(t, 'PM', 'backlog');
   return ticketBucket(t) === state.bucket;
 }
 
@@ -590,6 +628,8 @@ function filteredSorted() {
     let av = a[k] ?? '', bv = b[k] ?? '';
     if (k === 'key') {
       av = parseInt(a.key.split('-')[1]); bv = parseInt(b.key.split('-')[1]);
+    } else if (k === 'fixVersion') {
+      av = a.fixVersion ? a.fixVersion.name : ''; bv = b.fixVersion ? b.fixVersion.name : '';
     }
     if (av < bv) return -1 * dir;
     if (av > bv) return 1 * dir;
@@ -601,9 +641,21 @@ function filteredSorted() {
 function renderRows() {
   const controlsRow = document.getElementById('controlsRow');
   const tableWrap = document.getElementById('tableWrap');
+  const bizListWrap = document.getElementById('bizListWrap');
   const emptyState = document.getElementById('emptyState');
 
+  const showBizList = !state.biz && state.bucket === 'bizlist';
   const tableVisible = !!state.biz || state.showAll;
+
+  if (showBizList) {
+    controlsRow.hidden = true;
+    tableWrap.hidden = true;
+    emptyState.hidden = true;
+    bizListWrap.hidden = false;
+    renderBizList();
+    return;
+  }
+  bizListWrap.hidden = true;
   tableWrap.classList.toggle('hide-business', !!state.biz);
 
   if (!tableVisible) {
@@ -634,17 +686,50 @@ function renderRows() {
     const epicLink = meta && meta.epicKey
       ? `<a class="epic-link" href="${jiraUrl(meta.epicKey)}" target="_blank" rel="noopener">${meta.epicKey}</a>`
       : '';
+    const fixVersion = t.fixVersion
+      ? `<a class="epic-link" href="${t.fixVersion.url}" target="_blank" rel="noopener">${escapeHtml(t.fixVersion.name)}</a>`
+      : '—';
     return `<tr>
       <td><a class="key-link" href="${jiraUrl(t.key)}" target="_blank" rel="noopener">${t.key}</a></td>
       <td>${escapeHtml(t.summary)}</td>
       <td class="col-business"><div class="biz-cell"><span>${escapeHtml(t.business)}</span>${epicLink}</div></td>
       <td><span class="src-badge ${t.source}">${escapeHtml(srcLabel)}</span></td>
+      <td>${escapeHtml(t.assignee) || '—'}</td>
       <td><span class="badge ${statusCls}">${escapeHtml(t.status)}</span></td>
-      <td>${escapeHtml(t.issuetype)}</td>
       <td>${prio}</td>
+      <td>${t.releaseTrigger || '—'}</td>
+      <td>${fixVersion}</td>
+      <td>${t.duedate || '—'}</td>
+      <td>${t.created}</td>
       <td>${t.updated}</td>
     </tr>`;
   }).join('');
+}
+
+function renderBizList() {
+  const tbody = document.getElementById('bizListRows');
+  const list = BUSINESSES.slice().sort((a, b) => b.count - a.count);
+  tbody.innerHTML = list.map(b => {
+    const bucketCounts = { todo: 0, inprogress: 0, done: 0 };
+    DATA.tickets.forEach(t => { if (t.businessNorm === b.norm) bucketCounts[ticketBucket(t)]++; });
+    const epicLink = b.epicKey
+      ? `<a class="epic-link" href="${jiraUrl(b.epicKey)}" target="_blank" rel="noopener">${b.epicKey}</a>`
+      : '—';
+    return `<tr>
+      <td><span class="biz-row-link" data-norm="${b.norm}">${escapeHtml(b.label)}</span></td>
+      <td>${epicLink}</td>
+      <td class="biz-num">${b.count}</td>
+      <td class="biz-num">${bucketCounts.todo}</td>
+      <td class="biz-num">${bucketCounts.inprogress}</td>
+      <td class="biz-num">${bucketCounts.done}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('.biz-row-link').forEach(el => {
+    el.onclick = () => {
+      const b = bizMeta(el.dataset.norm);
+      if (b) selectBusiness(b);
+    };
+  });
 }
 
 function escapeHtml(s) {

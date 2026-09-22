@@ -33,7 +33,9 @@ from datetime import datetime, timezone
 JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL", "https://arbox.atlassian.net").rstrip("/")
 PROJECT_KEY = "ECS"
 BUSINESS_FIELD = "customfield_10301"
-FIELDS = ["summary", "status", "issuetype", BUSINESS_FIELD, "priority", "created", "updated", "issuelinks"]
+RELEASE_TRIGGER_FIELD = "customfield_11074"
+EXTRA_FIELDS = ["assignee", "duedate", "fixVersions", RELEASE_TRIGGER_FIELD]
+FIELDS = ["summary", "status", "issuetype", BUSINESS_FIELD, "priority", "created", "updated", "issuelinks"] + EXTRA_FIELDS
 
 # Engineering/product/ops work for a customer request lives in these other
 # projects, and gets connected to the customer's ECS Epic via a Jira
@@ -165,16 +167,44 @@ def extract_dev_links(raw_epics):
     return links
 
 
+def extract_extra_fields(f, ticket_key):
+    """Fields that mean the same thing across all linked projects but
+    aren't part of the fixed field set Jira returns for a nested
+    issuelinks.inwardIssue, so they're always fetched separately."""
+    assignee = (f.get("assignee") or {}).get("displayName")
+    duedate = f.get("duedate")
+    release_trigger = f.get(RELEASE_TRIGGER_FIELD)
+    if release_trigger:
+        release_trigger = release_trigger[:10]
+    fix_version = None
+    versions = f.get("fixVersions") or []
+    if versions:
+        v = versions[0]
+        project_key = ticket_key.split("-")[0]
+        fix_version = {
+            "name": v.get("name"),
+            "url": f"{JIRA_BASE_URL}/projects/{project_key}/versions/{v.get('id')}",
+        }
+    return {
+        "assignee": assignee,
+        "duedate": duedate,
+        "releaseTrigger": release_trigger,
+        "fixVersion": fix_version,
+    }
+
+
 def fetch_dev_links(raw_epics):
     links = extract_dev_links(raw_epics)
     if not links:
         return []
     unique_keys = sorted({l["key"] for l in links})
-    extra = fetch_issues_by_keys(unique_keys, ["created", "updated"])
+    extra = fetch_issues_by_keys(unique_keys, ["created", "updated"] + EXTRA_FIELDS)
     for l in links:
         it = extra.get(l["key"])
-        l["created"] = (it["fields"].get("created") or "")[:10] if it else ""
-        l["updated"] = (it["fields"].get("updated") or "")[:10] if it else ""
+        ef = it["fields"] if it else {}
+        l["created"] = (ef.get("created") or "")[:10]
+        l["updated"] = (ef.get("updated") or "")[:10]
+        l.update(extract_extra_fields(ef, l["key"]))
     return links
 
 
@@ -241,6 +271,7 @@ def build_dataset(raw_issues, dev_links):
                 "created": (f.get("created") or "")[:10],
                 "updated": (f.get("updated") or "")[:10],
                 "source": "ECS",
+                **extract_extra_fields(f, it["key"]),
             })
 
     epic_norms = [(norm(e["summary"]), e) for e in epics]
@@ -301,6 +332,10 @@ def build_dataset(raw_issues, dev_links):
             "created": link["created"],
             "updated": link["updated"],
             "source": link["source"],
+            "assignee": link.get("assignee"),
+            "duedate": link.get("duedate"),
+            "releaseTrigger": link.get("releaseTrigger"),
+            "fixVersion": link.get("fixVersion"),
         })
 
     business_list = []
@@ -332,6 +367,10 @@ def build_dataset(raw_issues, dev_links):
                 "created": t["created"],
                 "updated": t["updated"],
                 "source": t["source"],
+                "assignee": t.get("assignee"),
+                "duedate": t.get("duedate"),
+                "releaseTrigger": t.get("releaseTrigger"),
+                "fixVersion": t.get("fixVersion"),
             })
 
     return {"tickets": tickets_out, "businesses": business_list, "epics": epics}
