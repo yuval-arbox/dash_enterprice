@@ -390,7 +390,7 @@
 <script>
 const DATA = __DATA_JSON__;
 
-const SOURCE_LABEL = { ECS: 'אנטרפרייז', RD: 'פיתוח', PM: 'מוצר', DB: 'תפעול' };
+const SOURCE_LABEL = { ECS: 'אנטרפרייז', RD: 'פיתוח', PM: 'מוצר', DB: 'דאטה' };
 const BUSINESSES = DATA.businesses.filter(b => b.norm !== '__none__');
 
 let state = { search: '', status: '', biz: '', bucket: '', showAll: false, sortKey: 'updated', sortDir: -1 };
@@ -440,28 +440,31 @@ function ticketBucket(t) {
   return 'todo';
 }
 
-// "Active" (not-yet-started) tickets per board, for the three per-board
-// cubes below - each board's own "not started" status, by name:
+// "Active" tickets per board, for the three per-board cubes below: not
+// sitting in that board's own "not started" status, AND not already
+// counted under the "בוצע" bucket (a ticket is either done or active on
+// its board, never both, so the two cubes never double-count it).
 function isActiveOnBoard(t, source, notStartedStatus) {
   if (t.source !== source) return false;
   const status = (t.status || '').trim().toLowerCase();
-  return status !== notStartedStatus;
+  if (status === notStartedStatus) return false;
+  if (ticketBucket(t) === 'done') return false;
+  return true;
 }
 
 function renderCubes() {
   const scoped = bizScopedTickets();
   const byBucket = { todo: 0, inprogress: 0, done: 0 };
   scoped.forEach(t => byBucket[ticketBucket(t)]++);
-  const cubes = [
-    { cls: 'total', bucket: '', num: scoped.length, lbl: 'סה"כ טיקטים' },
-    { cls: 'backlog', bucket: 'todo', num: byBucket.todo, lbl: 'לטיפול (Backlog)' },
-    { cls: 'progress', bucket: 'inprogress', num: byBucket.inprogress, lbl: 'בתהליך' },
-    { cls: 'done', bucket: 'done', num: byBucket.done, lbl: 'בוצע' },
-  ];
+  const cubes = [];
   if (!state.biz) {
     cubes.push({ cls: 'biz', bucket: 'bizlist', num: BUSINESSES.length, lbl: 'עסקים' });
   }
   cubes.push(
+    { cls: 'total', bucket: '', num: scoped.length, lbl: 'סה"כ טיקטים' },
+    { cls: 'backlog', bucket: 'todo', num: byBucket.todo, lbl: 'לטיפול (Backlog)' },
+    { cls: 'progress', bucket: 'inprogress', num: byBucket.inprogress, lbl: 'בתהליך' },
+    { cls: 'done', bucket: 'done', num: byBucket.done, lbl: 'בוצע' },
     { cls: 'rdactive', bucket: 'rdActive', num: scoped.filter(t => isActiveOnBoard(t, 'RD', 'to do')).length, lbl: 'בפיתוח' },
     { cls: 'dbactive', bucket: 'dbActive', num: scoped.filter(t => isActiveOnBoard(t, 'DB', 'to do')).length, lbl: 'דאטה' },
     { cls: 'pmactive', bucket: 'pmActive', num: scoped.filter(t => isActiveOnBoard(t, 'PM', 'backlog')).length, lbl: 'מוצר' },
