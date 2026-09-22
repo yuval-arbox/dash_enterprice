@@ -313,7 +313,7 @@
   <a href="https://arbox.atlassian.net/jira/software/projects/ECS/boards" target="_blank" rel="noopener">Enterprise Customers - Sivan (ECS)</a>
   + טיקטי פיתוח/מוצר מקושרים מ-<a href="https://arbox.atlassian.net/jira/software/projects/RD/boards" target="_blank" rel="noopener">RD</a>
   ומ-<a href="https://arbox.atlassian.net/jira/software/projects/PM/boards" target="_blank" rel="noopener">PM</a>
-  · מתעדכן אוטומטית מ-Jira · עדכון אחרון: 2026-09-22 06:49 UTC
+  · מתעדכן אוטומטית מ-Jira · עדכון אחרון: 2026-09-22 06:58 UTC
 </div>
 
 <div class="biz-search-wrap">
@@ -386,14 +386,16 @@ function bizScopedTickets() {
 // here are defined explicitly instead:
 //  - done: only an RD (dev) ticket whose own status is literally "Done" -
 //    that's the one signal that something was actually shipped.
-//  - inProgress: an Enterprise or Product ticket not sitting in Backlog -
-//    RD tickets are deliberately excluded here, so an RD ticket only ever
-//    counts as "done" or falls through to backlog.
+//  - inProgress: an Enterprise ticket not sitting in Backlog and not
+//    already Done (an Enterprise "Done" isn't a build - it falls through
+//    to backlog instead, since only RD's Done counts as shipped), or any
+//    Product ticket not sitting in Backlog.
 //  - backlog: everything else (by elimination).
 function ticketBucket(t) {
   const status = (t.status || '').trim().toLowerCase();
   if (t.source === 'RD' && status === 'done') return 'done';
-  if ((t.source === 'ECS' || t.source === 'PM') && status !== 'backlog') return 'inprogress';
+  if (t.source === 'ECS' && status !== 'backlog' && status !== 'done') return 'inprogress';
+  if (t.source === 'PM' && status !== 'backlog') return 'inprogress';
   return 'todo';
 }
 
