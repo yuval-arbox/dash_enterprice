@@ -200,7 +200,7 @@
     font-size: 13px;
     background: #131f38;
   }
-  #tableWrap table { min-width: 1400px; }
+  #tableWrap table { min-width: 1500px; }
   #bizListWrap table { min-width: 620px; }
   thead th {
     background: linear-gradient(90deg, #c8b08a 0%, #7a9ed8 100%);
@@ -355,6 +355,7 @@
       <th data-key="fixVersion">Fix Version <span class="arrow">▾</span></th>
       <th data-key="duedate">Due Date <span class="arrow">▾</span></th>
       <th data-key="created">תאריך יצירה <span class="arrow">▾</span></th>
+      <th data-key="resolved">תאריך בוצע <span class="arrow">▾</span></th>
       <th data-key="updated">עודכן <span class="arrow">▾</span></th>
     </tr>
   </thead>
@@ -704,6 +705,7 @@ function renderRows() {
       <td>${fixVersion}</td>
       <td>${t.duedate || '—'}</td>
       <td>${t.created}</td>
+      <td>${t.resolved || '—'}</td>
       <td>${t.updated}</td>
     </tr>`;
   }).join('');

@@ -34,7 +34,7 @@ JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL", "https://arbox.atlassian.net").r
 PROJECT_KEY = "ECS"
 BUSINESS_FIELD = "customfield_10301"
 RELEASE_TRIGGER_FIELD = "customfield_11074"
-EXTRA_FIELDS = ["assignee", "duedate", "fixVersions", RELEASE_TRIGGER_FIELD]
+EXTRA_FIELDS = ["assignee", "duedate", "fixVersions", RELEASE_TRIGGER_FIELD, "resolutiondate"]
 FIELDS = ["summary", "status", "issuetype", BUSINESS_FIELD, "priority", "created", "updated", "issuelinks"] + EXTRA_FIELDS
 
 # Engineering/product/ops work for a customer request lives in these other
@@ -138,22 +138,27 @@ def fetch_issues_by_keys(keys, fields):
 
 
 def extract_dev_links(raw_epics):
-    """Pull RD/PM tickets linked to each ECS Epic via the Polaris
-    datapoint work item link (inward side: the epic is the "idea")."""
+    """Pull RD/PM/DB tickets linked to each ECS Epic via the Polaris
+    datapoint work item link. Most of these links have the epic on the
+    outward side (so the linked ticket shows up as the epic's
+    inwardIssue), but some were created the other way around (the linked
+    ticket shows up as the epic's outwardIssue instead) - Jira doesn't
+    normalize this, so both sides have to be checked or links get
+    silently dropped."""
     links = []
     for it in raw_epics:
         epic_key = it["key"]
         for link in it["fields"].get("issuelinks") or []:
             if link.get("type", {}).get("name") != DEV_LINK_TYPE:
                 continue
-            inward = link.get("inwardIssue")
-            if not inward:
+            other = link.get("inwardIssue") or link.get("outwardIssue")
+            if not other:
                 continue
-            ticket_key = inward["key"]
+            ticket_key = other["key"]
             project_key = ticket_key.split("-")[0]
             if project_key not in DEV_PROJECT_KEYS:
                 continue
-            lf = inward["fields"]
+            lf = other["fields"]
             links.append({
                 "epicKey": epic_key,
                 "key": ticket_key,
@@ -173,6 +178,9 @@ def extract_extra_fields(f, ticket_key):
     issuelinks.inwardIssue, so they're always fetched separately."""
     assignee = (f.get("assignee") or {}).get("displayName")
     duedate = f.get("duedate")
+    resolved = f.get("resolutiondate")
+    if resolved:
+        resolved = resolved[:10]
     release_trigger = f.get(RELEASE_TRIGGER_FIELD)
     if release_trigger:
         release_trigger = release_trigger[:10]
@@ -188,6 +196,7 @@ def extract_extra_fields(f, ticket_key):
     return {
         "assignee": assignee,
         "duedate": duedate,
+        "resolved": resolved,
         "releaseTrigger": release_trigger,
         "fixVersion": fix_version,
     }
@@ -334,6 +343,7 @@ def build_dataset(raw_issues, dev_links):
             "source": link["source"],
             "assignee": link.get("assignee"),
             "duedate": link.get("duedate"),
+            "resolved": link.get("resolved"),
             "releaseTrigger": link.get("releaseTrigger"),
             "fixVersion": link.get("fixVersion"),
         })
@@ -369,6 +379,7 @@ def build_dataset(raw_issues, dev_links):
                 "source": t["source"],
                 "assignee": t.get("assignee"),
                 "duedate": t.get("duedate"),
+                "resolved": t.get("resolved"),
                 "releaseTrigger": t.get("releaseTrigger"),
                 "fixVersion": t.get("fixVersion"),
             })
