@@ -161,6 +161,7 @@
   .cube.rdactive .num { color: #b0a0f0; }
   .cube.dbactive .num { color: #d8b06a; }
   .cube.pmactive .num { color: #a0c0f0; }
+  .cube.highprio .num { color: #e08a8a; }
 
   .controls {
     max-width: 1200px;
@@ -181,12 +182,53 @@
     font-family: Arial, sans-serif;
   }
   .controls input { flex: 1; min-width: 180px; }
-  .controls select { min-width: 170px; }
   .controls .count-note {
     font-size: 12px;
     color: #8fa5c4;
     margin-inline-start: auto;
   }
+
+  .status-filter-wrap { position: relative; }
+  .status-filter-btn {
+    background: #16233d;
+    border: 1px solid #2a3f66;
+    color: #e6ecf7;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+    min-width: 170px;
+    text-align: right;
+  }
+  .status-filter-btn:hover { border-color: #6a9fd8; }
+  .status-filter-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #16233d;
+    border: 1px solid #2a3f66;
+    border-radius: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 30;
+    min-width: 220px;
+    box-shadow: 0 12px 28px rgba(0,0,0,.45);
+    padding: 6px;
+  }
+  .status-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .status-filter-item:hover { background: #1c2f52; }
+  .status-filter-item input { pointer-events: none; }
+  .status-filter-divider { border-bottom: 1px solid #2a3f66; margin: 4px 2px; }
 
   .table-wrap {
     max-width: 1200px;
@@ -215,6 +257,68 @@
   }
   thead th:hover { filter: brightness(1.08); }
   thead th .arrow { opacity: .55; font-size: 10px; margin-inline-start: 4px; }
+  .date-filter-btn {
+    background: transparent;
+    border: none;
+    color: #1a1a1a;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: .55;
+    margin-inline-start: 2px;
+    padding: 0 2px;
+    vertical-align: middle;
+  }
+  .date-filter-btn:hover { opacity: .9; }
+  .date-filter-btn.active { opacity: 1; color: #1c3a2c; }
+
+  .date-filter-pop {
+    position: fixed;
+    z-index: 60;
+    background: #16233d;
+    border: 1px solid #2a3f66;
+    border-radius: 12px;
+    padding: 12px;
+    width: 230px;
+    font-size: 12.5px;
+    color: #e6ecf7;
+    box-shadow: 0 16px 32px rgba(0,0,0,.55);
+    cursor: default;
+  }
+  .dfp-title { font-weight: 700; margin-bottom: 8px; }
+  .dfp-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .dfp-presets button {
+    background: #1c2f52;
+    border: 1px solid #2a3f66;
+    color: #cdd9ee;
+    border-radius: 8px;
+    padding: 4px 9px;
+    font-size: 11.5px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+  }
+  .dfp-presets button:hover { border-color: #6a9fd8; }
+  .dfp-range { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .dfp-range label { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .dfp-range input {
+    background: #0f1a2e;
+    border: 1px solid #2a3f66;
+    color: #e6ecf7;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+  }
+  .dfp-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .dfp-actions button {
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid #2a3f66;
+    font-family: Arial, sans-serif;
+  }
+  #dfpApply { background: #6a9fd8; color: #0f1a2e; border-color: #6a9fd8; font-weight: 700; }
+  #dfpClear { background: transparent; color: #9db3d4; }
   tbody td {
     padding: 9px 12px;
     border-bottom: 1px solid #1f2f4d;
@@ -336,7 +440,10 @@
 
 <div class="controls" id="controlsRow" hidden>
   <input id="search" type="text" placeholder="חיפוש לפי מפתח או כותרת…">
-  <select id="statusFilter"></select>
+  <div class="status-filter-wrap">
+    <button type="button" id="statusFilterBtn" class="status-filter-btn">כל הסטטוסים</button>
+    <div class="status-filter-menu" id="statusFilterMenu" hidden></div>
+  </div>
   <span class="count-note" id="countNote"></span>
 </div>
 
@@ -351,12 +458,12 @@
       <th data-key="assignee">מבצע <span class="arrow">▾</span></th>
       <th data-key="status">סטטוס <span class="arrow">▾</span></th>
       <th data-key="priority">תעדוף <span class="arrow">▾</span></th>
-      <th data-key="releaseTrigger">Release Trigger <span class="arrow">▾</span></th>
+      <th data-key="releaseTrigger">Release Trigger <button type="button" class="date-filter-btn" data-field="releaseTrigger">📅</button><span class="arrow">▾</span></th>
       <th data-key="fixVersion">Fix Version <span class="arrow">▾</span></th>
-      <th data-key="duedate">Due Date <span class="arrow">▾</span></th>
-      <th data-key="created">תאריך יצירה <span class="arrow">▾</span></th>
-      <th data-key="resolved">תאריך בוצע <span class="arrow">▾</span></th>
-      <th data-key="updated">עודכן <span class="arrow">▾</span></th>
+      <th data-key="duedate">Due Date <button type="button" class="date-filter-btn" data-field="duedate">📅</button><span class="arrow">▾</span></th>
+      <th data-key="created">תאריך יצירה <button type="button" class="date-filter-btn" data-field="created">📅</button><span class="arrow">▾</span></th>
+      <th data-key="resolved">תאריך בוצע <button type="button" class="date-filter-btn" data-field="resolved">📅</button><span class="arrow">▾</span></th>
+      <th data-key="updated">עודכן <button type="button" class="date-filter-btn" data-field="updated">📅</button><span class="arrow">▾</span></th>
     </tr>
   </thead>
   <tbody id="rows"></tbody>
@@ -384,6 +491,25 @@
   <div>בחרי עסק למעלה כדי לראות את הטיקטים שלו</div>
 </div>
 
+<div class="date-filter-pop" id="dateFilterPop" hidden>
+  <div class="dfp-title" id="dfpTitle"></div>
+  <div class="dfp-presets">
+    <button type="button" data-preset="today">היום</button>
+    <button type="button" data-preset="week">השבוע</button>
+    <button type="button" data-preset="month">החודש</button>
+    <button type="button" data-preset="quarter">הרבעון</button>
+    <button type="button" data-preset="year">השנה</button>
+  </div>
+  <div class="dfp-range">
+    <label>מ-<input type="date" id="dfpFrom"></label>
+    <label>עד <input type="date" id="dfpTo"></label>
+  </div>
+  <div class="dfp-actions">
+    <button type="button" id="dfpClear">נקה</button>
+    <button type="button" id="dfpApply">סינון</button>
+  </div>
+</div>
+
 <footer>
   __TOTAL__ טיקטים · __BIZCOUNT__ עסקים · חלק מהעסקים מופיעים ביותר מרשומה אחת עקב הבדלי כתיב/רישיות בשדה "Project" בג'ירה — לא בוצע מיזוג אוטומטי כדי לא לסכן שיוך שגוי. טיקטים מ-RD/PM מוצגים כשהם מקושרים לאפיק של העסק דרך קישור Polaris, וייתכן שאותו טיקט יופיע תחת כמה עסקים אם הוא רלוונטי ליותר מלקוח אחד.
 </footer>
@@ -394,9 +520,18 @@ const DATA = __DATA_JSON__;
 const SOURCE_LABEL = { ECS: 'אנטרפרייז', RD: 'פיתוח', PM: 'מוצר', DB: 'דאטה' };
 const BUSINESSES = DATA.businesses.filter(b => b.norm !== '__none__');
 
-let state = { search: '', status: '', biz: '', bucket: '', showAll: false, sortKey: 'updated', sortDir: -1 };
+let state = { search: '', statuses: [], biz: '', bucket: '', showAll: false, sortKey: 'updated', sortDir: -1, dateFilters: {} };
 let suggestIndex = -1;
 let currentSuggestions = [];
+let activeDateField = null;
+
+const DATE_FIELD_LABEL = {
+  created: 'תאריך יצירה',
+  resolved: 'תאריך בוצע',
+  updated: 'עודכן',
+  duedate: 'Due Date',
+  releaseTrigger: 'Release Trigger',
+};
 
 function jiraUrl(key) { return 'https://arbox.atlassian.net/browse/' + key; }
 
@@ -453,6 +588,10 @@ function isActiveOnBoard(t, source, notStartedStatus) {
   return true;
 }
 
+function isHighPriority(t) {
+  return t.priority === 'High' || t.priority === 'Highest';
+}
+
 function renderCubes() {
   const scoped = bizScopedTickets();
   const byBucket = { todo: 0, inprogress: 0, done: 0 };
@@ -469,6 +608,7 @@ function renderCubes() {
     { cls: 'rdactive', bucket: 'rdActive', num: scoped.filter(t => isActiveOnBoard(t, 'RD', 'to do')).length, lbl: 'בפיתוח' },
     { cls: 'dbactive', bucket: 'dbActive', num: scoped.filter(t => isActiveOnBoard(t, 'DB', 'to do')).length, lbl: 'דאטה' },
     { cls: 'pmactive', bucket: 'pmActive', num: scoped.filter(t => isActiveOnBoard(t, 'PM', 'backlog')).length, lbl: 'מוצר' },
+    { cls: 'highprio', bucket: 'highPriority', num: scoped.filter(isHighPriority).length, lbl: 'תעדוף גבוה' },
   );
   document.getElementById('cubes').innerHTML = cubes.map(c =>
     `<div class="cube ${c.cls} clickable${(c.bucket && state.bucket === c.bucket) ? ' active' : ''}" data-bucket="${c.bucket}"><div class="num">${c.num}</div><div class="lbl">${c.lbl}</div></div>`
@@ -483,12 +623,6 @@ function renderCubes() {
 }
 
 function renderControls() {
-  const statusSel = document.getElementById('statusFilter');
-  const statuses = Array.from(new Set(DATA.tickets.map(t => t.status)));
-  statusSel.innerHTML = '<option value="">כל הסטטוסים</option>' +
-    statuses.map(s => `<option value="${s}">${s}</option>`).join('');
-  statusSel.onchange = () => { state.status = statusSel.value; renderAll(); };
-
   document.getElementById('search').oninput = (e) => { state.search = e.target.value.trim().toLowerCase(); renderAll(); };
 
   document.querySelectorAll('#tableWrap thead th').forEach(th => {
@@ -503,6 +637,141 @@ function renderControls() {
   });
 
   setupBizSearch();
+  setupStatusFilter();
+  setupDateFilters();
+}
+
+function setupStatusFilter() {
+  const btn = document.getElementById('statusFilterBtn');
+  const menu = document.getElementById('statusFilterMenu');
+  const statuses = Array.from(new Set(DATA.tickets.map(t => t.status))).sort();
+
+  function updateBtnLabel() {
+    if (!state.statuses.length) btn.textContent = 'כל הסטטוסים';
+    else if (state.statuses.length === 1) btn.textContent = state.statuses[0];
+    else btn.textContent = state.statuses.length + ' סטטוסים נבחרו';
+  }
+
+  function renderMenu() {
+    menu.innerHTML =
+      `<div class="status-filter-item" data-all="1"><input type="checkbox" ${!state.statuses.length ? 'checked' : ''}><span>הכל</span></div>` +
+      `<div class="status-filter-divider"></div>` +
+      statuses.map(s => `<div class="status-filter-item" data-status="${escapeHtml(s)}"><input type="checkbox" ${state.statuses.includes(s) ? 'checked' : ''}><span>${escapeHtml(s)}</span></div>`).join('');
+    menu.querySelectorAll('.status-filter-item').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        if (item.dataset.all) {
+          state.statuses = [];
+        } else {
+          const s = item.dataset.status;
+          state.statuses = state.statuses.includes(s)
+            ? state.statuses.filter(x => x !== s)
+            : state.statuses.concat(s);
+        }
+        updateBtnLabel();
+        renderMenu();
+        renderAll();
+      };
+    });
+  }
+
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  };
+  menu.onclick = (e) => e.stopPropagation();
+  document.addEventListener('click', () => { menu.hidden = true; });
+
+  updateBtnLabel();
+  renderMenu();
+}
+
+function datePresetRange(preset) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (preset === 'today') { const s = fmt(now); return { from: s, to: s }; }
+  if (preset === 'week') {
+    const start = new Date(now); start.setDate(now.getDate() - now.getDay());
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  if (preset === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  if (preset === 'quarter') {
+    const q = Math.floor(now.getMonth() / 3);
+    const start = new Date(now.getFullYear(), q * 3, 1);
+    const end = new Date(now.getFullYear(), q * 3 + 3, 0);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  if (preset === 'year') {
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear(), 11, 31);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  return { from: null, to: null };
+}
+
+function updateDateFilterIndicators() {
+  document.querySelectorAll('.date-filter-btn').forEach(b => {
+    b.classList.toggle('active', !!state.dateFilters[b.dataset.field]);
+  });
+}
+
+function setupDateFilters() {
+  const pop = document.getElementById('dateFilterPop');
+  const fromInput = document.getElementById('dfpFrom');
+  const toInput = document.getElementById('dfpTo');
+
+  document.querySelectorAll('.date-filter-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      activeDateField = btn.dataset.field;
+      const cur = state.dateFilters[activeDateField] || {};
+      fromInput.value = cur.from || '';
+      toInput.value = cur.to || '';
+      document.getElementById('dfpTitle').textContent = DATE_FIELD_LABEL[activeDateField] || activeDateField;
+      pop.hidden = false;
+      const rect = btn.getBoundingClientRect();
+      const maxLeft = window.innerWidth - 246;
+      pop.style.top = (rect.bottom + 6) + 'px';
+      pop.style.left = Math.max(10, Math.min(rect.left, maxLeft)) + 'px';
+    };
+  });
+
+  pop.querySelectorAll('[data-preset]').forEach(b => {
+    b.onclick = (e) => {
+      e.stopPropagation();
+      const r = datePresetRange(b.dataset.preset);
+      fromInput.value = r.from;
+      toInput.value = r.to;
+    };
+  });
+
+  document.getElementById('dfpApply').onclick = (e) => {
+    e.stopPropagation();
+    const from = fromInput.value || null;
+    const to = toInput.value || null;
+    if (from || to) state.dateFilters[activeDateField] = { from, to };
+    else delete state.dateFilters[activeDateField];
+    pop.hidden = true;
+    updateDateFilterIndicators();
+    renderAll();
+  };
+
+  document.getElementById('dfpClear').onclick = (e) => {
+    e.stopPropagation();
+    delete state.dateFilters[activeDateField];
+    pop.hidden = true;
+    updateDateFilterIndicators();
+    renderAll();
+  };
+
+  pop.onclick = (e) => e.stopPropagation();
+  document.addEventListener('click', () => { pop.hidden = true; });
 }
 
 function selectBusiness(b) {
@@ -614,13 +883,26 @@ function matchesBucket(t) {
   if (state.bucket === 'rdActive') return isActiveOnBoard(t, 'RD', 'to do');
   if (state.bucket === 'dbActive') return isActiveOnBoard(t, 'DB', 'to do');
   if (state.bucket === 'pmActive') return isActiveOnBoard(t, 'PM', 'backlog');
+  if (state.bucket === 'highPriority') return isHighPriority(t);
   return ticketBucket(t) === state.bucket;
+}
+
+function matchesDateFilters(t) {
+  for (const field in state.dateFilters) {
+    const { from, to } = state.dateFilters[field];
+    const val = t[field];
+    if (!val) return false;
+    if (from && val < from) return false;
+    if (to && val > to) return false;
+  }
+  return true;
 }
 
 function filteredSorted() {
   let rows = bizScopedTickets().filter(t => {
     if (!matchesBucket(t)) return false;
-    if (state.status && t.status !== state.status) return false;
+    if (state.statuses.length && !state.statuses.includes(t.status)) return false;
+    if (!matchesDateFilters(t)) return false;
     if (state.search) {
       const hay = (t.key + ' ' + t.summary).toLowerCase();
       if (!hay.includes(state.search)) return false;
