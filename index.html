@@ -219,15 +219,18 @@
   }
   .status-filter-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     padding: 7px 10px;
     cursor: pointer;
     border-radius: 8px;
     font-size: 13px;
+    direction: ltr;
+    text-align: left;
   }
   .status-filter-item:hover { background: #1c2f52; }
-  .status-filter-item input { pointer-events: none; }
+  .status-filter-item input { pointer-events: none; margin-top: 2px; flex-shrink: 0; }
+  .status-filter-item span { flex: 1; }
   .status-filter-divider { border-bottom: 1px solid #2a3f66; margin: 4px 2px; }
 
   .table-wrap {
@@ -236,6 +239,7 @@
     overflow-x: auto;
     border-radius: 12px;
   }
+  #tableWrap { max-width: 1800px; }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -270,6 +274,7 @@
   }
   .date-filter-btn:hover { opacity: .9; }
   .date-filter-btn.active { opacity: 1; color: #1c3a2c; }
+  .date-filter-btn svg { display: block; }
 
   .date-filter-pop {
     position: fixed;
@@ -424,7 +429,7 @@
   + טיקטים מקושרים מ-<a href="https://arbox.atlassian.net/jira/software/projects/RD/boards" target="_blank" rel="noopener">RD</a>,
   <a href="https://arbox.atlassian.net/jira/software/projects/PM/boards" target="_blank" rel="noopener">PM</a>
   ומ-<a href="https://arbox.atlassian.net/jira/software/projects/DB/boards" target="_blank" rel="noopener">DB</a>
-  · מתעדכן אוטומטית מ-Jira · עדכון אחרון: 2026-10-05 12:46 UTC
+  · מתעדכן אוטומטית מ-Jira · עדכון אחרון: 2026-10-05 14:51 UTC
 </div>
 
 <div class="biz-search-wrap">
@@ -458,12 +463,12 @@
       <th data-key="assignee">מבצע <span class="arrow">▾</span></th>
       <th data-key="status">סטטוס <span class="arrow">▾</span></th>
       <th data-key="priority">תעדוף <span class="arrow">▾</span></th>
-      <th data-key="releaseTrigger">Release Trigger <button type="button" class="date-filter-btn" data-field="releaseTrigger">📅</button><span class="arrow">▾</span></th>
+      <th data-key="releaseTrigger">Release Trigger <button type="button" class="date-filter-btn" data-field="releaseTrigger"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
       <th data-key="fixVersion">Fix Version <span class="arrow">▾</span></th>
-      <th data-key="duedate">Due Date <button type="button" class="date-filter-btn" data-field="duedate">📅</button><span class="arrow">▾</span></th>
-      <th data-key="created">תאריך יצירה <button type="button" class="date-filter-btn" data-field="created">📅</button><span class="arrow">▾</span></th>
-      <th data-key="resolved">תאריך בוצע <button type="button" class="date-filter-btn" data-field="resolved">📅</button><span class="arrow">▾</span></th>
-      <th data-key="updated">עודכן <button type="button" class="date-filter-btn" data-field="updated">📅</button><span class="arrow">▾</span></th>
+      <th data-key="duedate">Due Date <button type="button" class="date-filter-btn" data-field="duedate"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
+      <th data-key="created">תאריך יצירה <button type="button" class="date-filter-btn" data-field="created"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
+      <th data-key="resolved">תאריך בוצע <button type="button" class="date-filter-btn" data-field="resolved"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
+      <th data-key="updated">עודכן <button type="button" class="date-filter-btn" data-field="updated"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
     </tr>
   </thead>
   <tbody id="rows"></tbody>
