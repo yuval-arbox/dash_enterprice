@@ -219,18 +219,53 @@
   }
   .status-filter-item {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 7px 10px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
     cursor: pointer;
     border-radius: 8px;
     font-size: 13px;
     direction: ltr;
     text-align: left;
+    transition: background .12s;
   }
   .status-filter-item:hover { background: #1c2f52; }
-  .status-filter-item input { pointer-events: none; margin-top: 2px; flex-shrink: 0; }
-  .status-filter-item span { flex: 1; }
+  .status-filter-item input {
+    appearance: none;
+    -webkit-appearance: none;
+    pointer-events: none;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin: 0;
+    padding: 0;
+    border: 1.5px solid #3d5680;
+    border-radius: 5px;
+    background: #0f1a2e;
+    position: relative;
+    transition: background .12s, border-color .12s;
+  }
+  .status-filter-item input:checked {
+    background: #6a9fd8;
+    border-color: #6a9fd8;
+  }
+  .status-filter-item input:checked::after {
+    content: '';
+    position: absolute;
+    left: 4.5px;
+    top: 1.5px;
+    width: 4px;
+    height: 8px;
+    border: solid #0f1a2e;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .status-filter-item span {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.35;
+  }
   .status-filter-divider { border-bottom: 1px solid #2a3f66; margin: 4px 2px; }
 
   .table-wrap {
@@ -429,7 +464,7 @@
   + טיקטים מקושרים מ-<a href="https://arbox.atlassian.net/jira/software/projects/RD/boards" target="_blank" rel="noopener">RD</a>,
   <a href="https://arbox.atlassian.net/jira/software/projects/PM/boards" target="_blank" rel="noopener">PM</a>
   ומ-<a href="https://arbox.atlassian.net/jira/software/projects/DB/boards" target="_blank" rel="noopener">DB</a>
-  · מתעדכן אוטומטית מ-Jira · עדכון אחרון: 2026-10-05 14:51 UTC
+  · מתעדכן אוטומטית מ-Jira · עדכון אחרון: 2026-10-06 08:07 UTC
 </div>
 
 <div class="biz-search-wrap">
