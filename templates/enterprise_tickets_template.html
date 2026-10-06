@@ -359,6 +359,23 @@
   }
   #dfpApply { background: #6a9fd8; color: #0f1a2e; border-color: #6a9fd8; font-weight: 700; }
   #dfpClear { background: transparent; color: #9db3d4; }
+
+  .col-filter-pop {
+    position: fixed;
+    z-index: 60;
+    background: #16233d;
+    border: 1px solid #2a3f66;
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 220px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 13px;
+    color: #e6ecf7;
+    box-shadow: 0 16px 32px rgba(0,0,0,.55);
+    cursor: default;
+  }
+  .col-filter-pop .dfp-title { padding: 6px 10px 8px; margin-bottom: 0; color: #9db3d4; font-size: 12px; }
   tbody td {
     padding: 9px 12px;
     border-bottom: 1px solid #1f2f4d;
@@ -494,8 +511,8 @@
       <th data-key="key">מפתח <span class="arrow">▾</span></th>
       <th data-key="summary">כותרת <span class="arrow">▾</span></th>
       <th data-key="business" class="col-business">עסק <span class="arrow">▾</span></th>
-      <th data-key="source">בורד <span class="arrow">▾</span></th>
-      <th data-key="assignee">מבצע <span class="arrow">▾</span></th>
+      <th data-key="source">בורד <button type="button" class="date-filter-btn col-filter-btn" data-field="source"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
+      <th data-key="assignee">מבצע <button type="button" class="date-filter-btn col-filter-btn" data-field="assignee"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
       <th data-key="status">סטטוס <span class="arrow">▾</span></th>
       <th data-key="priority">תעדוף <span class="arrow">▾</span></th>
       <th data-key="releaseTrigger">Release Trigger <button type="button" class="date-filter-btn" data-field="releaseTrigger"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 2.5h13L9.5 8v5l-3 1.5V8z"/></svg></button><span class="arrow">▾</span></th>
@@ -550,6 +567,11 @@
   </div>
 </div>
 
+<div class="col-filter-pop" id="colFilterPop" hidden>
+  <div class="dfp-title" id="cfpTitle"></div>
+  <div id="cfpList"></div>
+</div>
+
 <footer>
   __TOTAL__ טיקטים · __BIZCOUNT__ עסקים · חלק מהעסקים מופיעים ביותר מרשומה אחת עקב הבדלי כתיב/רישיות בשדה "Project" בג'ירה — לא בוצע מיזוג אוטומטי כדי לא לסכן שיוך שגוי. טיקטים מ-RD/PM מוצגים כשהם מקושרים לאפיק של העסק דרך קישור Polaris, וייתכן שאותו טיקט יופיע תחת כמה עסקים אם הוא רלוונטי ליותר מלקוח אחד.
 </footer>
@@ -560,10 +582,13 @@ const DATA = __DATA_JSON__;
 const SOURCE_LABEL = { ECS: 'אנטרפרייז', RD: 'פיתוח', PM: 'מוצר', DB: 'דאטה' };
 const BUSINESSES = DATA.businesses.filter(b => b.norm !== '__none__');
 
-let state = { search: '', statuses: [], biz: '', bucket: '', showAll: false, sortKey: 'updated', sortDir: -1, dateFilters: {} };
+let state = { search: '', statuses: [], sources: [], assignees: [], biz: '', bucket: '', showAll: false, sortKey: 'updated', sortDir: -1, dateFilters: {} };
 let suggestIndex = -1;
 let currentSuggestions = [];
 let activeDateField = null;
+let activeColField = null;
+
+const COL_FIELD_LABEL = { source: 'בורד', assignee: 'מבצע' };
 
 const DATE_FIELD_LABEL = {
   created: 'תאריך יצירה',
@@ -679,6 +704,7 @@ function renderControls() {
   setupBizSearch();
   setupStatusFilter();
   setupDateFilters();
+  setupColumnFilters();
 }
 
 function setupStatusFilter() {
@@ -814,6 +840,82 @@ function setupDateFilters() {
   document.addEventListener('click', () => { pop.hidden = true; });
 }
 
+function uniqueValuesForColumn(field) {
+  if (field === 'source') {
+    return Array.from(new Set(DATA.tickets.map(t => t.source))).sort()
+      .map(v => ({ value: v, label: SOURCE_LABEL[v] || v }));
+  }
+  if (field === 'assignee') {
+    const vals = Array.from(new Set(DATA.tickets.map(t => t.assignee || '__none__')));
+    vals.sort((a, b) => (a === '__none__') - (b === '__none__') || a.localeCompare(b, 'he'));
+    return vals.map(v => ({ value: v, label: v === '__none__' ? 'ללא מבצע' : v }));
+  }
+  return [];
+}
+
+function colFilterStateArr(field) {
+  return field === 'source' ? state.sources : state.assignees;
+}
+
+function setColFilterStateArr(field, arr) {
+  if (field === 'source') state.sources = arr; else state.assignees = arr;
+}
+
+function updateColFilterIndicators() {
+  document.querySelectorAll('.col-filter-btn').forEach(b => {
+    const arr = colFilterStateArr(b.dataset.field);
+    b.classList.toggle('active', !!(arr && arr.length));
+  });
+}
+
+function setupColumnFilters() {
+  const pop = document.getElementById('colFilterPop');
+  const list = document.getElementById('cfpList');
+  const title = document.getElementById('cfpTitle');
+
+  function renderList(field) {
+    const options = uniqueValuesForColumn(field);
+    const selected = colFilterStateArr(field);
+    list.innerHTML =
+      `<div class="status-filter-item" data-all="1"><input type="checkbox" ${!selected.length ? 'checked' : ''}><span>הכל</span></div>` +
+      `<div class="status-filter-divider"></div>` +
+      options.map(o => `<div class="status-filter-item" data-value="${escapeHtml(o.value)}"><input type="checkbox" ${selected.includes(o.value) ? 'checked' : ''}><span>${escapeHtml(o.label)}</span></div>`).join('');
+    list.querySelectorAll('.status-filter-item').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        let arr = colFilterStateArr(field);
+        if (item.dataset.all) {
+          arr = [];
+        } else {
+          const v = item.dataset.value;
+          arr = arr.includes(v) ? arr.filter(x => x !== v) : arr.concat(v);
+        }
+        setColFilterStateArr(field, arr);
+        renderList(field);
+        updateColFilterIndicators();
+        renderAll();
+      };
+    });
+  }
+
+  document.querySelectorAll('.col-filter-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      activeColField = btn.dataset.field;
+      title.textContent = COL_FIELD_LABEL[activeColField] || activeColField;
+      renderList(activeColField);
+      pop.hidden = false;
+      const rect = btn.getBoundingClientRect();
+      const maxLeft = window.innerWidth - 246;
+      pop.style.top = (rect.bottom + 6) + 'px';
+      pop.style.left = Math.max(10, Math.min(rect.left, maxLeft)) + 'px';
+    };
+  });
+
+  pop.onclick = (e) => e.stopPropagation();
+  document.addEventListener('click', () => { pop.hidden = true; });
+}
+
 function selectBusiness(b) {
   state.biz = b.norm;
   state.bucket = '';
@@ -942,6 +1044,8 @@ function filteredSorted() {
   let rows = bizScopedTickets().filter(t => {
     if (!matchesBucket(t)) return false;
     if (state.statuses.length && !state.statuses.includes(t.status)) return false;
+    if (state.sources.length && !state.sources.includes(t.source)) return false;
+    if (state.assignees.length && !state.assignees.includes(t.assignee || '__none__')) return false;
     if (!matchesDateFilters(t)) return false;
     if (state.search) {
       const hay = (t.key + ' ' + t.summary).toLowerCase();
