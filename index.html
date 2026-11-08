@@ -393,6 +393,7 @@
 
   .table-wrap.hide-business .col-business { display: none; }
   .biz-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .biz-cell + .biz-cell { margin-top: 5px; }
   .biz-cell a.epic-link {
     font-size: 10.5px;
     color: #6ad0b0;
@@ -626,7 +627,7 @@
 </div>
 
 <footer>
-  656 טיקטים · 43 עסקים · חלק מהעסקים מופיעים ביותר מרשומה אחת עקב הבדלי כתיב/רישיות בשדה "Project" בג'ירה — לא בוצע מיזוג אוטומטי כדי לא לסכן שיוך שגוי. טיקטים מ-RD/PM מוצגים כשהם מקושרים לאפיק של העסק דרך קישור Polaris, וייתכן שאותו טיקט יופיע תחת כמה עסקים אם הוא רלוונטי ליותר מלקוח אחד.
+  623 טיקטים · 43 עסקים · חלק מהעסקים מופיעים ביותר מרשומה אחת עקב הבדלי כתיב/רישיות בשדה "Project" בג'ירה — לא בוצע מיזוג אוטומטי כדי לא לסכן שיוך שגוי. טיקטים מ-RD/PM מוצגים כשהם מקושרים לאפיק של העסק דרך קישור Polaris, וייתכן שאותו טיקט יופיע תחת כמה עסקים אם הוא רלוונטי ליותר מלקוח אחד.
 </footer>
 
 <script>
@@ -657,8 +658,26 @@ function bizMeta(norm) {
   return DATA.businesses.find(b => b.norm === norm);
 }
 
+// A ticket linked to several customers' Epics appears in DATA once per
+// customer. Outside a single-business view it's shown once, with every
+// customer it belongs to listed in the business column.
+const UNIQUE_TICKETS = (() => {
+  const byKey = new Map();
+  DATA.tickets.forEach(t => {
+    const ref = { business: t.business, businessNorm: t.businessNorm };
+    const seen = byKey.get(t.key);
+    if (seen) {
+      if (!seen.businesses.some(b => b.businessNorm === ref.businessNorm)) seen.businesses.push(ref);
+    } else {
+      byKey.set(t.key, Object.assign({}, t, { businesses: [ref] }));
+    }
+  });
+  return Array.from(byKey.values()).map(t =>
+    Object.assign(t, { business: t.businesses.map(b => b.business).join(', ') }));
+})();
+
 function bizScopedTickets() {
-  return state.biz ? DATA.tickets.filter(t => t.businessNorm === state.biz) : DATA.tickets;
+  return state.biz ? DATA.tickets.filter(t => t.businessNorm === state.biz) : UNIQUE_TICKETS;
 }
 
 // Cross-project progress bucket: a ticket's own Jira status conventions
@@ -1229,10 +1248,14 @@ function renderRows() {
     const srcLabel = SOURCE_LABEL[t.source] || t.source || '';
     const statusCls = ticketBucket(t);
     const prio = t.priority ? `<span class="prio ${t.priority}">${t.priority}</span>` : '';
-    const meta = bizMeta(t.businessNorm);
-    const epicLink = meta && meta.epicKey
-      ? `<a class="epic-link" href="${jiraUrl(meta.epicKey)}" target="_blank" rel="noopener">${meta.epicKey}</a>`
-      : '';
+    const bizRefs = t.businesses || [{ business: t.business, businessNorm: t.businessNorm }];
+    const bizCell = bizRefs.map(b => {
+      const meta = bizMeta(b.businessNorm);
+      const epicLink = meta && meta.epicKey
+        ? `<a class="epic-link" href="${jiraUrl(meta.epicKey)}" target="_blank" rel="noopener">${meta.epicKey}</a>`
+        : '';
+      return `<div class="biz-cell"><span>${escapeHtml(b.business)}</span>${epicLink}</div>`;
+    }).join('');
     const fixVersion = t.fixVersion
       ? `<a class="epic-link" href="${t.fixVersion.url}" target="_blank" rel="noopener">${escapeHtml(t.fixVersion.name)}</a>`
       : '—';
@@ -1243,7 +1266,7 @@ function renderRows() {
     return `<tr${overdue ? ' class="overdue"' : ''}>
       <td><a class="key-link" href="${jiraUrl(t.key)}" target="_blank" rel="noopener">${t.key}</a></td>
       <td>${escapeHtml(t.summary)}</td>
-      <td class="col-business"><div class="biz-cell"><span>${escapeHtml(t.business)}</span>${epicLink}</div></td>
+      <td class="col-business">${bizCell}</td>
       <td><span class="src-badge ${t.source}">${escapeHtml(srcLabel)}</span></td>
       <td>${escapeHtml(t.assignee) || '—'}</td>
       <td><span class="badge ${statusCls}">${escapeHtml(t.status)}</span></td>

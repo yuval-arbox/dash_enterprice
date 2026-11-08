@@ -397,7 +397,7 @@ def render(dataset):
 
     html = template
     html = html.replace("__DATA_JSON__", data_json)
-    html = html.replace("__TOTAL__", str(len(dataset["tickets"])))
+    html = html.replace("__TOTAL__", str(len({t["key"] for t in dataset["tickets"]})))
     html = html.replace("__BIZCOUNT__", str(biz_count))
     html = html.replace("__UPDATED_AT__", updated_at)
     return html
