@@ -28,7 +28,8 @@ import time
 import urllib.error
 import urllib.request
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL", "https://arbox.atlassian.net").rstrip("/")
 PROJECT_KEY = "ECS"
@@ -393,7 +394,8 @@ def render(dataset):
 
     data_json = json.dumps(dataset, ensure_ascii=False, separators=(",", ":"))
     biz_count = len([b for b in dataset["businesses"] if b["norm"] != "__none__"])
-    updated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    # Shown to an Israeli team, so stamp the time in Israel local time.
+    updated_at = datetime.now(ZoneInfo("Asia/Jerusalem")).strftime("%d.%m.%Y %H:%M") + " (שעון ישראל)"
 
     html = template
     html = html.replace("__DATA_JSON__", data_json)
